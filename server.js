@@ -44,15 +44,23 @@ async function initDatabase() {
     // CREATE TABLE IF NOT EXISTS does not modify an existing table, so an
     // older users table may be missing the newer `name` column.
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
 
-    // Give existing accounts a usable display name before making the column required.
+    // Keep compatibility with older Hyper databases that use a required
+    // `username` column while the current app uses `name`.
     await pool.query(`
       UPDATE users
-      SET name = COALESCE(NULLIF(name, ''), split_part(email, '@', 1))
+      SET name = COALESCE(NULLIF(name, ''), NULLIF(username, ''), split_part(email, '@', 1))
       WHERE name IS NULL OR name = ''
     `);
+    await pool.query(`
+      UPDATE users
+      SET username = COALESCE(NULLIF(username, ''), NULLIF(name, ''), split_part(email, '@', 1))
+      WHERE username IS NULL OR username = ''
+    `);
     await pool.query(`ALTER TABLE users ALTER COLUMN name SET NOT NULL`);
+    await pool.query(`ALTER TABLE users ALTER COLUMN username SET NOT NULL`);
     await pool.query(`ALTER TABLE users ALTER COLUMN created_at SET DEFAULT NOW()`);
 
     console.log("Database connected and users table/migrations ready");
@@ -117,7 +125,7 @@ app.post("/api/register", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      "INSERT INTO users (email, password_hash, name) VALUES ($1,$2,$3) RETURNING id,email,name",
+      "INSERT INTO users (email, password_hash, name, username) VALUES ($1,$2,$3,$3) RETURNING id,email,name,username",
       [email, hash, name]
     );
 
