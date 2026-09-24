@@ -47,6 +47,20 @@ async function initDatabase() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
 
+    // Normalize legacy columns. Older Hyper databases can have `name` and
+    // `username` with different PostgreSQL types. Using the same SQL parameter
+    // for both columns then causes:
+    //   inconsistent types deduced for parameter $3
+    // Convert both identity columns to TEXT before registration.
+    await pool.query(`
+      ALTER TABLE users
+      ALTER COLUMN name TYPE TEXT USING name::text
+    `);
+    await pool.query(`
+      ALTER TABLE users
+      ALTER COLUMN username TYPE TEXT USING username::text
+    `);
+
     // Keep compatibility with older Hyper databases that use a required
     // `username` column while the current app uses `name`.
     await pool.query(`
@@ -125,8 +139,8 @@ app.post("/api/register", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      "INSERT INTO users (email, password_hash, name, username) VALUES ($1,$2,$3,$3) RETURNING id,email,name,username",
-      [email, hash, name]
+      "INSERT INTO users (email, password_hash, name, username) VALUES ($1,$2,$3,$4) RETURNING id,email,name,username",
+      [email, hash, name, name]
     );
 
     const user = result.rows[0];
