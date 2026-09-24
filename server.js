@@ -139,7 +139,7 @@ app.post("/api/register", async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      "INSERT INTO users (email, password_hash, name, username) VALUES ($1,$2,$3,$4) RETURNING id,email,name,username",
+      "INSERT INTO users (email, password_hash, name, username) VALUES ($1::text,$2::text,$3::text,$4::text) RETURNING id,email,name,username",
       [email, hash, name, name]
     );
 
@@ -154,7 +154,7 @@ app.post("/api/register", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("REGISTER_ERROR:", err.message);
+    console.error("REGISTER_ERROR:", err.message, "CODE:", err.code || "none", "DETAIL:", err.detail || "none");
     if (err.code === "23505")
       return res.status(409).json({ error: "This email is already registered. Use Login." });
     return res.status(500).json({ error: "Registration failed. Check Render database connection." });
