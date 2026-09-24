@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hyper</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <h1>Hyper</h1>
+
+  <div id="auth" class="card">
+    <div class="tabs">
+      <button id="loginTab">Login</button>
+      <button id="registerTab">Register</button>
+    </div>
+
+    <form id="form">
+      <input id="name" placeholder="Name" autocomplete="name">
+      <input id="email" type="email" placeholder="Email" autocomplete="email" required>
+      <div class="passwordBox">
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button type="button" id="showPassword">Show</button>
+      </div>
+      <button type="submit">Continue</button>
+    </form>
+    <p id="msg"></p>
+  </div>
+
+  <div id="user" class="card hidden">
+    <h2>Welcome, <span id="who"></span> 👋</h2>
+    <p id="emailOut"></p>
+    <p id="admin"></p>
+    <button id="logout">Logout</button>
+  </div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
