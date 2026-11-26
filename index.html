@@ -1,40 +1,44 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hyper</title>
-<link rel="stylesheet" href="/style.css">
-</head>
-<body>
-<div class="wrap">
-  <h1>Hyper</h1>
-
-  <div id="auth" class="card">
-    <div class="tabs">
-      <button id="loginTab">Login</button>
-      <button id="registerTab">Register</button>
-    </div>
-
-    <form id="form">
-      <input id="name" placeholder="Name" autocomplete="name">
-      <input id="email" type="email" placeholder="Email" autocomplete="email" required>
-      <div class="passwordBox">
-        <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
-        <button type="button" id="showPassword">Show</button>
-      </div>
-      <button type="submit">Continue</button>
-    </form>
-    <p id="msg"></p>
-  </div>
-
-  <div id="user" class="card hidden">
-    <h2>Welcome, <span id="who"></span> 👋</h2>
-    <p id="emailOut"></p>
-    <p id="admin"></p>
-    <button id="logout">Logout</button>
-  </div>
-</div>
-<script src="/app.js"></script>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101018"><title>Hyper Instagram</title>
+<style>
+:root{--bg:#0d0d13;--panel:#171720;--muted:#9b9baa;--line:#2b2b38;--pink:#ff3d83;--purple:#8b5cf6;--text:#f7f7fb}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px Inter,system-ui,Arial}button,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:11px;padding:11px 15px;background:linear-gradient(110deg,var(--pink),var(--purple));color:white;font-weight:700}button.ghost{background:#252532;border:1px solid var(--line)}button.danger{background:#7f263b}.muted{color:var(--muted)}.hidden{display:none!important}.wrap{max-width:1120px;margin:auto;padding:16px}.top{height:66px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0d0d13ee;backdrop-filter:blur(12px);z-index:5;padding:0 max(16px,calc((100vw - 1088px)/2))}.brand{font-size:23px;font-weight:900;letter-spacing:-1px;background:linear-gradient(90deg,#ff3d83,#a78bfa);color:transparent;background-clip:text}.nav{display:flex;gap:8px;align-items:center}.nav button{padding:9px 12px}.layout{display:grid;grid-template-columns:minmax(0,650px) 300px;gap:24px;justify-content:center;margin-top:22px}.panel,.post,.authbox{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:17px;margin-bottom:15px}.authbox{max-width:420px;margin:7vh auto;padding:28px}.field{width:100%;background:#101018;color:white;border:1px solid var(--line);border-radius:10px;padding:12px;margin:7px 0 12px}.row{display:flex;gap:10px;align-items:center}.between{justify-content:space-between}.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#343444;display:grid;place-items:center;font-weight:800}.storyrow{display:flex;gap:13px;overflow:auto}.story{min-width:75px;text-align:center;font-size:12px}.story .avatar{margin:auto;border:2px solid var(--pink)}.posthead{display:flex;align-items:center;gap:10px;margin-bottom:12px}.postimg{width:100%;max-height:650px;object-fit:contain;border-radius:12px;background:#08080c}.actions{display:flex;gap:8px;margin-top:12px}.actions button{padding:8px 11px}.caption{line-height:1.5;white-space:pre-wrap}.side{position:sticky;top:86px;height:max-content}.small{font-size:12px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.stats{display:flex;gap:18px;margin:12px 0}.stats b{display:block}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}.useritem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#252532;padding:12px 18px;border-radius:12px;z-index:20}.comment{padding:7px 0;border-top:1px solid var(--line)}@media(max-width:800px){.layout{display:block}.side{position:static}.nav .optional{display:none}.wrap{padding:12px}.top{padding:0 12px}.authbox{margin:4vh 12px}}
+</style></head><body>
+<header class="top"><div class="brand">HYPER ✦</div><div class="nav"><button class="ghost" onclick="showFeed()">Home</button><button class="ghost optional" onclick="showSearch()">Search</button><button class="ghost optional" onclick="showProfile()">Profile</button><button id="adminNav" class="ghost hidden" onclick="showAdmin()">Admin</button><button id="loginNav" onclick="showAuth()">Login</button><button id="logoutNav" class="ghost hidden" onclick="logout()">Logout</button></div></header>
+<div id="auth" class="authbox"><h1>Welcome to Hyper</h1><p class="muted">Share moments. Discover people.</p><div class="tabs"><button id="loginTab" onclick="authMode='login';renderAuth()">Login</button><button class="ghost" id="regTab" onclick="authMode='register';renderAuth()">Register</button></div><div id="nameField" class="hidden"><label>Name</label><input id="name" class="field" placeholder="Your name" maxlength="40"></div><label>Email</label><input id="email" class="field" type="email" placeholder="you@example.com"><label>Password</label><input id="password" class="field" type="password" placeholder="At least 10 characters"><button style="width:100%" onclick="submitAuth()">Continue</button><p class="muted small">Use a unique password. This is not connected to Instagram.</p></div>
+<main id="app" class="wrap hidden"><div class="layout"><section id="main"></section><aside class="side"><div class="panel"><h3>About Hyper</h3><p class="muted">A place to share photos, short stories and connect with your community.</p><p class="small muted">Be kind. Report harmful content. Never share private information publicly.</p></div><div class="panel"><h3>Quick links</h3><button class="ghost" style="width:100%;margin:4px 0" onclick="showSearch()">Find people</button><button class="ghost" style="width:100%;margin:4px 0" onclick="showProfile()">Edit profile</button></div></aside></div></main>
+<div id="toast" class="toast hidden"></div>
+<script>
+let me=null,authMode="login";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const avatar=(url,name)=>`<div class="avatar">${url?`<img src="${esc(url)}" class="avatar">`:esc((name||"?")[0].toUpperCase())}</div>`;
+async function api(url,opts={}){let r=await fetch("/api"+url,{...opts,headers:opts.body instanceof FormData?{}:{"Content-Type":"application/json",...(opts.headers||{})}});let d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Something went wrong");return d}
+function toast(t){$("toast").textContent=t;$("toast").classList.remove("hidden");setTimeout(()=>$("toast").classList.add("hidden"),2600)}
+function renderAuth(){$("nameField").classList.toggle("hidden",authMode!=="register");$("loginTab").className=authMode==="login"?"":"ghost";$("regTab").className=authMode==="register"?"":"ghost"}
+async function submitAuth(){try{let body={email:$("email").value,password:$("password").value,name:$("name").value};me=(await api(authMode==="register"?"/register":"/login",{method:"POST",body:JSON.stringify(body)})).user;sync();showFeed()}catch(e){toast(e.message)}}
+function sync(){$("auth").classList.toggle("hidden",!!me);$("app").classList.toggle("hidden",!me);$("loginNav").classList.toggle("hidden",!!me);$("logoutNav").classList.toggle("hidden",!me);$("adminNav").classList.toggle("hidden",!me?.is_admin)}
+async function logout(){try{await api("/logout",{method:"POST"});me=null;sync();$("main").innerHTML="";showAuth()}catch(e){toast(e.message)}}
+function showAuth(){$("auth").classList.remove("hidden");$("app").classList.add("hidden")}
+async function showFeed(){if(!me)return showAuth();sync();$("main").innerHTML=`<div class="panel"><h2>Stories</h2><div class="row"><input id="storyText" class="field" placeholder="Share a short story (24h)" maxlength="180"><button onclick="addStory()">Post</button></div><div id="stories" class="storyrow"></div></div><div class="panel"><h2>Create post</h2><textarea id="caption" class="field" rows="3" placeholder="What's happening?"></textarea><input id="postImage" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="field"><button onclick="createPost()">Share post</button></div><div id="feed"></div>`;await loadStories();await loadFeed()}
+async function loadStories(){try{let d=await api("/stories");$("stories").innerHTML=d.stories.map(s=>`<div class="story">${avatar(s.avatar,s.name)}<div>${esc(s.name)}</div><div class="muted">${esc(s.body)}</div></div>`).join("")||'<span class="muted">No stories yet</span>'}catch{}}
+async function addStory(){try{await api("/stories",{method:"POST",body:JSON.stringify({body:$("storyText").value})});$("storyText").value="";loadStories();toast("Story shared")}catch(e){toast(e.message)}}
+async function createPost(){try{let f=new FormData();f.append("caption",$("caption").value);if($("postImage").files[0])f.append("image",$("postImage").files[0]);await api("/posts",{method:"POST",body:f});toast("Post shared");showFeed()}catch(e){toast(e.message)}}
+async function loadFeed(){try{let d=await api("/feed");$("feed").innerHTML=d.posts.map(p=>`<article class="post"><div class="posthead">${avatar(p.avatar,p.name)}<div><b>${esc(p.name)}</b><div class="small muted">${new Date(p.created_at+"Z").toLocaleString()}</div></div><button class="ghost" style="margin-left:auto" onclick="report('post',${p.id})">Report</button>${p.user_id===me.id?`<button class="danger" onclick="deletePost(${p.id})">Delete</button>`:""}</div>${p.image?`<img class="postimg" src="${esc(p.image)}">`:""}<p class="caption">${esc(p.caption)}</p><div class="actions"><button class="ghost" onclick="like(${p.id})">${p.liked?"♥":"♡"} ${p.likes}</button><button class="ghost" onclick="comments(${p.id})">Comments ${p.comments}</button><button class="ghost" onclick="showUser(${p.user_id})">Profile</button></div><div id="comments-${p.id}"></div></article>`).join("")||'<div class="panel muted">No posts yet. Share the first moment!</div>'}catch(e){toast(e.message)}}
+async function like(id){try{await api(`/posts/${id}/like`,{method:"POST"});loadFeed()}catch(e){toast(e.message)}}
+async function deletePost(id){if(!confirm("Delete this post?"))return;try{await api(`/posts/${id}`,{method:"DELETE"});loadFeed()}catch(e){toast(e.message)}}
+async function comments(id){let box=$(`comments-${id}`);if(box.dataset.open){box.innerHTML="";box.dataset.open="";return}try{let d=await api(`/posts/${id}/comments`);box.dataset.open="1";box.innerHTML=d.comments.map(c=>`<div class="comment"><b>${esc(c.name)}</b> ${esc(c.body)}</div>`).join("")+`<div class="row"><input id="comment-${id}" class="field" placeholder="Write a comment" maxlength="500"><button onclick="addComment(${id})">Send</button></div>`}catch(e){toast(e.message)}}
+async function addComment(id){try{await api(`/posts/${id}/comments`,{method:"POST",body:JSON.stringify({body:$(`comment-${id}`).value})});comments(id);setTimeout(()=>comments(id),100)}catch(e){toast(e.message)}}
+async function report(type,id){let reason=prompt("Why are you reporting this?");if(!reason)return;try{await api("/report",{method:"POST",body:JSON.stringify({type,id,reason})});toast("Report sent for review")}catch(e){toast(e.message)}}
+async function showSearch(){if(!me)return showAuth();$("main").innerHTML=`<div class="panel"><h2>Find people</h2><input id="searchQ" class="field" placeholder="Search by name" oninput="searchUsers()"><div id="users"></div></div>`;searchUsers()}
+async function searchUsers(){let q=$("searchQ")?.value||"";try{let d=await api("/users/search?q="+encodeURIComponent(q));$("users").innerHTML=d.users.map(u=>`<div class="useritem">${avatar(u.avatar,u.name)}<div style="flex:1"><b>${esc(u.name)}</b><div class="muted small">${esc(u.bio)}</div></div><button onclick="showUser(${u.id})">View</button></div>`).join("")}catch{}}
+async function showUser(id){try{let d=await api("/users/"+id),u=d.user;$("main").innerHTML=`<div class="panel"><div class="row">${avatar(u.avatar,u.name)}<div><h2>${esc(u.name)}</h2><p class="muted">${esc(u.bio)}</p></div></div><div class="stats"><span><b>${d.posts.length}</b><small class="muted">Posts</small></span><span><b>${d.followers}</b><small class="muted">Followers</small></span><span><b>${d.following}</b><small class="muted">Following</small></span></div>${d.isMe?'<button onclick="showProfile()">Edit profile</button>':`<button onclick="follow(${id})">${d.followingMe?"Unfollow":"Follow"}</button> <button class="ghost" onclick="blockUser(${id})">Block / Unblock</button> <button class="ghost" onclick="report('user',${id})">Report</button>`}</div>`+d.posts.map(p=>`<div class="post">${p.image?`<img class="postimg" src="${esc(p.image)}">`:""}<p>${esc(p.caption)}</p><span class="muted small">♥ ${p.likes}</span></div>`).join("");}catch(e){toast(e.message)}}
+async function follow(id){try{let d=await api(`/users/${id}/follow`,{method:"POST"});toast(d.following?"Following":"Unfollowed");showUser(id)}catch(e){toast(e.message)}}
+async function blockUser(id){try{let d=await api(`/users/${id}/block`,{method:"POST"});toast(d.blocked?"Account blocked":"Account unblocked");showFeed()}catch(e){toast(e.message)}}
+function showProfile(){if(!me)return showAuth();$("main").innerHTML=`<div class="panel"><h2>Edit profile</h2><label>Name</label><input id="editName" class="field" value="${esc(me.name)}"><label>Bio</label><textarea id="editBio" class="field" maxlength="240">${esc(me.bio||"")}</textarea><label>Profile photo</label><input id="avatarFile" class="field" type="file" accept="image/*"><button onclick="saveProfile()">Save profile</button></div>`}
+async function saveProfile(){try{let f=new FormData();f.append("name",$("editName").value);f.append("bio",$("editBio").value);if($("avatarFile").files[0])f.append("avatar",$("avatarFile").files[0]);me=(await fetch("/api/profile",{method:"PUT",body:f}).then(r=>r.json()));if(me.error)throw Error(me.error);me=me.user;sync();toast("Profile updated");showProfile()}catch(e){toast(e.message)}}
+async function showAdmin(){try{let d=await api("/admin/overview");$("main").innerHTML=`<div class="panel"><h2>Admin dashboard</h2><div class="stats"><span><b>${d.stats.users}</b>Users</span><span><b>${d.stats.posts}</b>Posts</span><span><b>${d.stats.reports}</b>Open reports</span></div><h3>Reports</h3>${d.reports.map(r=>`<div class="useritem"><div style="flex:1"><b>${esc(r.target_type)} #${r.target_id}</b><div class="muted small">${esc(r.reason)} · by ${esc(r.reporter)} · ${r.status}</div></div>${r.status==="open"?`<button onclick="closeReport(${r.id})">Close</button>`:""}</div>`).join("")}<h3>Users</h3>${d.users.map(u=>`<div class="useritem"><div style="flex:1"><b>${esc(u.name)}</b><div class="muted small">${esc(u.email)} · ${u.is_suspended?"Suspended":"Active"}</div></div>${!u.is_admin?`<button class="ghost" onclick="suspendUser(${u.id})">${u.is_suspended?"Restore":"Suspend"}</button>`:"Admin"}</div>`).join("")}</div>`}catch(e){toast(e.message)}}
+async function closeReport(id){try{await api(`/admin/reports/${id}/close`,{method:"POST"});showAdmin()}catch(e){toast(e.message)}}
+async function suspendUser(id){try{await api(`/admin/users/${id}/suspend`,{method:"POST"});showAdmin()}catch(e){toast(e.message)}}
+async function init(){try{me=(await api("/me")).user;sync();if(me)showFeed();else showAuth()}catch{showAuth()}}
+renderAuth();init();
+</script></body></html>
