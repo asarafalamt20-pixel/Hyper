@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
-const UPLOAD_DIR = path.join(ROOT, "uploads");
+const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -77,8 +77,11 @@ const storage = multer.diskStorage({
  filename: (_,file,cb) => cb(null, Date.now()+"-"+Math.random().toString(36).slice(2,10)+path.extname(file.originalname).toLowerCase())
 });
 const upload = multer({
- storage, limits: { fileSize: 5*1024*1024 },
- fileFilter: (_,file,cb) => cb(null, /^image\/(jpeg|png|gif|webp)$/.test(file.mimetype))
+ storage, limits: { fileSize: 8*1024*1024 },
+ fileFilter: (_,file,cb) => {
+  const ok = /^image\/(jpeg|png|gif|webp)$/.test(file.mimetype) && /\.(jpe?g|png|gif|webp)$/i.test(file.originalname);
+  cb(ok ? null : new Error("Only JPG, PNG, GIF or WEBP images are allowed"), ok);
+ }
 });
 const safeUser = u => ({ id:u.id, name:u.name, email:u.email, bio:u.bio, avatar:u.avatar, is_admin:!!u.is_admin });
 const current = req => req.session.userId ? db.prepare("SELECT * FROM users WHERE id=?").get(req.session.userId) : null;
@@ -164,12 +167,19 @@ app.get("/api/users/:id",(req,res)=>{
  followingMe:me?!!db.prepare("SELECT 1 FROM follows WHERE follower_id=? AND following_id=?").get(me.id,id):false,
  isMe:!!me&&me.id===id});
 });
-app.put("/api/profile",auth,upload.single("avatar"),(req,res)=>{
- const name=String(req.body.name||req.user.name).trim().slice(0,40), bio=String(req.body.bio||"").trim().slice(0,240);
- const avatar=req.file?"/uploads/"+req.file.filename:req.user.avatar;
- if(name.length<2) return res.status(400).json({error:"Name is too short"});
- db.prepare("UPDATE users SET name=?,bio=?,avatar=? WHERE id=?").run(name,bio,avatar,req.user.id);
- res.json({user:safeUser(current(req))});
+app.put("/api/profile",auth,(req,res,next)=>{
+ upload.single("avatar")(req,res,err=>{ if(err) return next(err); next(); });
+},(req,res)=>{
+ try {
+  const name=String(req.body.name||"").trim().slice(0,40);
+  const bio=String(req.body.bio||"").trim().slice(0,240);
+  if(name.length<2) return res.status(400).json({error:"Name must contain at least 2 characters"});
+  const avatar=req.file?"/uploads/"+req.file.filename:req.user.avatar;
+  db.prepare("UPDATE users SET name=?,bio=?,avatar=? WHERE id=?").run(name,bio,avatar,req.user.id);
+  const user=safeUser(current(req));
+  req.session.userId=req.user.id;
+  res.json({ok:true,user});
+ } catch (err) { console.error("Profile update failed:",err); res.status(500).json({error:"Profile could not be saved. Please try again."}); }
 });
 app.post("/api/users/:id/follow",auth,(req,res)=>{
  const id=Number(req.params.id); if(id===req.user.id || !db.prepare("SELECT id FROM users WHERE id=? AND is_suspended=0").get(id) || blockedEither(req.user.id,id)) return res.status(400).json({error:"Cannot follow this account"});
@@ -213,6 +223,12 @@ app.post("/api/admin/reports/:id/close",auth,admin,(req,res)=>{
 app.post("/api/admin/users/:id/suspend",auth,admin,(req,res)=>{
  const id=Number(req.params.id); if(id===req.user.id) return res.status(400).json({error:"Cannot suspend yourself"});
  db.prepare("UPDATE users SET is_suspended=1-is_suspended WHERE id=? AND is_admin=0").run(id); res.json({ok:true});
+});
+
+app.use((err,req,res,next)=>{
+ console.error("Request error:",err);
+ if(req.path.startsWith("/api/")) return res.status(err.code==="LIMIT_FILE_SIZE"?413:400).json({error:err.code==="LIMIT_FILE_SIZE"?"Image must be 8 MB or smaller":(err.message||"Request failed")});
+ res.status(500).send("Something went wrong");
 });
 
 app.get("/",(_,res)=>res.sendFile(path.join(ROOT,"index.html")));
