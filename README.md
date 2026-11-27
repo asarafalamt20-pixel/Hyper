@@ -20,6 +20,10 @@ A single-root-folder social photo-sharing web app starter for Render.
 4. Run `npm start`
 5. Open `http://localhost:3000`
 
+## Runtime compatibility
+
+This project is pinned to Node.js 22 LTS because `better-sqlite3` uses a native prebuilt binary. The `.node-version`, `package.json` engine, and `render.yaml` all select Node 22. If you already created a Render service, set its `NODE_VERSION` environment variable to `22.16.0`, then run **Clear build cache & deploy**.
+
 ## Deploy on Render
 1. Upload the contents of this folder to the root of a GitHub repository.
 2. Create a Render Web Service from that repository, or use the included `render.yaml`.
