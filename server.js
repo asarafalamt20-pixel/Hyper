@@ -28,12 +28,22 @@ const fresh = () => ({ users: [], posts: [], likes: [], comments: [], follows: [
 let db;
 try { db = fs.existsSync(DB_FILE) ? { ...fresh(), ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) } : fresh(); } catch { db = fresh(); }
 for (const k of Object.keys(fresh())) if (!Array.isArray(db[k])) db[k] = [];
+// Bootstrap the administrator from Render environment variables; never store a plaintext password in source code.
+const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
+if (ADMIN_EMAIL && ADMIN_PASSWORD.length >= 12) {
+  let admin = db.users.find(u => u.email === ADMIN_EMAIL);
+  if (!admin) { admin = { id: crypto.randomBytes(12).toString('hex'), name: 'HYPER Admin', email: ADMIN_EMAIL, bio: 'Administrator', avatar: '', createdAt: new Date().toISOString() }; db.users.push(admin); }
+  admin.role = 'admin'; admin.password = bcrypt.hashSync(ADMIN_PASSWORD, 12);
+  fs.writeFileSync(DB_FILE, JSON.stringify(db));
+} else if (ADMIN_EMAIL || ADMIN_PASSWORD) { console.warn('Admin bootstrap skipped: set ADMIN_EMAIL and ADMIN_PASSWORD (at least 12 characters).'); }
 function save() { const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
 const id = () => crypto.randomBytes(12).toString('hex');
 const clean = s => String(s || '').trim();
-const publicUser = u => ({ id:u.id, name:u.name, email:u.email, bio:u.bio || '', avatar:u.avatar || '', createdAt:u.createdAt });
+const publicUser = u => ({ id:u.id, name:u.name, email:u.email, role:u.role || 'user', bio:u.bio || '', avatar:u.avatar || '', createdAt:u.createdAt });
 const getUser = req => db.users.find(u => u.id === req.session.userId && !u.suspended);
 function auth(req,res,next) { const u=getUser(req); if(!u) return res.status(401).json({error:'Please log in first'}); req.user=u; next(); }
+function adminOnly(req,res,next) { if(req.user?.role !== 'admin') return res.status(403).json({error:'Admin access only'}); next(); }
 function blocked(a,b) { return db.blocks.some(x => (x.from===a&&x.to===b)||(x.from===b&&x.to===a)); }
 const sessionMiddleware = session({ store:new FileStore({path:path.join(DATA_DIR,'sessions'),reapInterval:3600,ttl:7*86400}), secret:process.env.SESSION_SECRET || 'change-this-hyper-session-secret-before-production', resave:false, saveUninitialized:false, proxy:true,cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:7*86400000} });
 app.use(helmet({ contentSecurityPolicy:false }));
@@ -57,6 +67,8 @@ const upload = multer({ storage, limits:{fileSize:100*1024*1024}, fileFilter:(re
 
 app.get('/health',(req,res)=>res.json({ok:true,app:'HYPER'}));
 app.get('/api/me',(req,res)=>{ const u=getUser(req); res.json({user:u?publicUser(u):null}); });
+app.get('/api/admin/overview',auth,adminOnly,(req,res)=>res.json({stats:{users:db.users.length,posts:db.posts.length,stories:db.stories.length,messages:db.messages.length,reports:db.reports.length},users:db.users.map(u=>({...publicUser(u),suspended:!!u.suspended}))}));
+app.post('/api/admin/users/:id/suspend',auth,adminOnly,(req,res)=>{const u=db.users.find(x=>x.id===req.params.id);if(!u||u.id===req.user.id)return res.status(400).json({error:'Invalid user'});u.suspended=!u.suspended;save();res.json({suspended:u.suspended});});
 app.post('/api/register', async(req,res)=>{
  const name=clean(req.body.name).slice(0,40), email=clean(req.body.email).toLowerCase(), password=String(req.body.password||'');
  if(name.length<2 || !/^\S+@\S+\.\S+$/.test(email) || password.length<8) return res.status(400).json({error:'Name, valid email and password (8+ characters) are required'});
@@ -69,10 +81,15 @@ app.post('/api/login', async(req,res)=>{
  if(u.suspended) return res.status(403).json({error:'Account is suspended'}); req.session.userId=u.id; res.json({user:publicUser(u)});
 });
 app.post('/api/logout',auth,(req,res)=>req.session.destroy(()=>res.json({ok:true})));
+app.get('/api/settings',auth,(req,res)=>res.json({hideLikes:!!req.user.hideLikes,blockedUsers:db.blocks.filter(x=>x.from===req.user.id).map(x=>publicUser(db.users.find(u=>u.id===x.to)).id)}));
+app.put('/api/settings',auth,(req,res)=>{req.user.hideLikes=!!req.body.hideLikes;save();res.json({ok:true,hideLikes:req.user.hideLikes});});
+app.get('/api/blocks',auth,(req,res)=>res.json({users:db.blocks.filter(x=>x.from===req.user.id).map(x=>db.users.find(u=>u.id===x.to)).filter(Boolean).map(publicUser)}));
+app.post('/api/users/:id/block',auth,(req,res)=>{const target=req.params.id;if(target===req.user.id||!db.users.some(u=>u.id===target))return res.status(400).json({error:'Invalid user'});if(!db.blocks.some(x=>x.from===req.user.id&&x.to===target))db.blocks.push({from:req.user.id,to:target,createdAt:new Date().toISOString()});db.messages=db.messages.filter(m=>!((m.from===req.user.id&&m.to===target)||(m.from===target&&m.to===req.user.id)));save();res.json({blocked:true});});
+app.delete('/api/users/:id/block',auth,(req,res)=>{db.blocks=db.blocks.filter(x=>!(x.from===req.user.id&&x.to===req.params.id));save();res.json({blocked:false});});
 app.get('/api/feed',(req,res)=>{
  const me=getUser(req), type=clean(req.query.type), q=clean(req.query.q).toLowerCase();
  let posts=db.posts.filter(p=>{ const owner=db.users.find(u=>u.id===p.userId); return owner&&!owner.suspended&&(!me||!blocked(me.id,p.userId))&&(!type||p.type===type)&&(!q||(p.caption||'').toLowerCase().includes(q)||owner.name.toLowerCase().includes(q)); }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,100);
- res.json({posts:posts.map(p=>({...p,user:publicUser(db.users.find(u=>u.id===p.userId)),likes:db.likes.filter(x=>x.postId===p.id).length,comments:db.comments.filter(x=>x.postId===p.id).length,liked:!!me&&db.likes.some(x=>x.postId===p.id&&x.userId===me.id),saved:!!me&&db.saves.some(x=>x.postId===p.id&&x.userId===me.id)}))});
+ res.json({posts:posts.map(p=>({...p,user:publicUser(db.users.find(u=>u.id===p.userId)),likes:db.likes.filter(x=>x.postId===p.id).length,comments:db.comments.filter(x=>x.postId===p.id).length,liked:!!me&&db.likes.some(x=>x.postId===p.id&&x.userId===me.id),saved:!!me&&db.saves.some(x=>x.postId===p.id&&x.userId===me.id),hideLikes:!!me&&!!me.hideLikes}))});
 });
 app.post('/api/posts',auth,upload.single('file'),(req,res)=>{
  const caption=clean(req.body.caption).slice(0,2000), file=req.file; const ext=file?path.extname(file.originalname).toLowerCase():''; const isVideo=!!file&&(file.mimetype.startsWith('video/')||['.mp4','.m4v','.webm','.mov','.3gp','.mkv'].includes(ext)); let type=file?(isVideo?(req.body.kind==='short'?'short':'video'):'image'):'text';
@@ -85,10 +102,10 @@ app.post('/api/posts/:id/save',auth,(req,res)=>{const p=db.posts.find(x=>x.id===
 app.get('/api/posts/:id/comments',(req,res)=>{ const comments=db.comments.filter(c=>c.postId===req.params.id).map(c=>{ const u=db.users.find(x=>x.id===c.userId)||{id:'',name:'Deleted',email:''}; return {...c,user:publicUser(u)}; }); res.json({comments}); });
 app.post('/api/posts/:id/comments',auth,(req,res)=>{const body=clean(req.body.body).slice(0,600);if(!body)return res.status(400).json({error:'Comment is empty'});db.comments.push({id:id(),postId:req.params.id,userId:req.user.id,body,createdAt:new Date().toISOString()});save();res.json({ok:true});});
 app.get('/api/users/search',auth,(req,res)=>{const q=clean(req.query.q).toLowerCase();res.json({users:db.users.filter(u=>!u.suspended&&u.id!==req.user.id&&!blocked(u.id,req.user.id)&&u.name.toLowerCase().includes(q)).slice(0,40).map(publicUser)});});
-app.get('/api/users/:id',(req,res)=>{const u=db.users.find(x=>x.id===req.params.id&&!x.suspended);if(!u)return res.status(404).json({error:'User not found'});const posts=db.posts.filter(p=>p.userId===u.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));res.json({user:publicUser(u),posts,followers:db.follows.filter(x=>x.to===u.id).length,following:db.follows.filter(x=>x.from===u.id).length});});
+app.get('/api/users/:id',(req,res)=>{const viewer=getUser(req);if(viewer&&blocked(viewer.id,req.params.id))return res.status(404).json({error:'User not found'});const u=db.users.find(x=>x.id===req.params.id&&!x.suspended);if(!u)return res.status(404).json({error:'User not found'});const posts=db.posts.filter(p=>p.userId===u.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));res.json({user:publicUser(u),posts,followers:db.follows.filter(x=>x.to===u.id).length,following:db.follows.filter(x=>x.from===u.id).length});});
 app.post('/api/users/:id/follow',auth,(req,res)=>{const target=req.params.id;if(target===req.user.id||!db.users.some(u=>u.id===target)||blocked(target,req.user.id))return res.status(400).json({error:'Cannot follow this user'});const i=db.follows.findIndex(x=>x.from===req.user.id&&x.to===target);if(i>=0)db.follows.splice(i,1);else db.follows.push({from:req.user.id,to:target});save();res.json({following:i<0});});
 app.put('/api/profile',auth,upload.single('avatar'),(req,res)=>{const name=clean(req.body.name).slice(0,40);if(name.length<2)return res.status(400).json({error:'Name must be at least 2 characters'});if(req.file&&!req.file.mimetype.startsWith('image/'))return res.status(400).json({error:'Profile photo must be an image'});req.user.name=name;req.user.bio=clean(req.body.bio).slice(0,240);if(req.file)req.user.avatar='/uploads/'+req.file.filename;save();res.json({ok:true,user:publicUser(req.user)});});
-app.get('/api/stories',(req,res)=>{ const now=Date.now(); db.stories=db.stories.filter(s=>new Date(s.expiresAt).getTime()>now); const stories=db.stories.map(s=>{ const u=db.users.find(x=>x.id===s.userId)||{id:'',name:'Unknown',email:''}; return {...s,user:publicUser(u)}; }); res.json({stories}); });
+app.get('/api/stories',(req,res)=>{ const me=getUser(req); const now=Date.now(); db.stories=db.stories.filter(s=>new Date(s.expiresAt).getTime()>now); const stories=db.stories.filter(s=>!me||!blocked(me.id,s.userId)).map(s=>{ const u=db.users.find(x=>x.id===s.userId)||{id:'',name:'Unknown',email:''}; return {...s,user:publicUser(u)}; }); res.json({stories}); });
 app.post('/api/stories',auth,upload.single('file'),(req,res)=>{const body=clean(req.body.body).slice(0,180),file=req.file;if(!body&&!file)return res.status(400).json({error:'Write a story or choose a photo/video'});if(file&&!/^(image|video)\//.test(file.mimetype))return res.status(400).json({error:'Story attachment must be a photo or video'});const story={id:id(),userId:req.user.id,body,file:file?'/uploads/'+file.filename:'',fileName:file?.originalname||'',mime:file?.mimetype||'',size:file?.size||0,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()};db.stories.push(story);save();res.json({ok:true,story});});
 app.post('/api/stories/:id/like',auth,(req,res)=>{const s=db.stories.find(x=>x.id===req.params.id);if(!s)return res.status(404).json({error:'Story not found'});const i=db.storyLikes.findIndex(x=>x.storyId===s.id&&x.userId===req.user.id);if(i>=0)db.storyLikes.splice(i,1);else db.storyLikes.push({storyId:s.id,userId:req.user.id});save();res.json({liked:i<0});});
 app.post('/api/stories/:id/save',auth,(req,res)=>{const s=db.stories.find(x=>x.id===req.params.id);if(!s)return res.status(404).json({error:'Story not found'});const i=db.storySaves.findIndex(x=>x.storyId===s.id&&x.userId===req.user.id);if(i>=0)db.storySaves.splice(i,1);else db.storySaves.push({storyId:s.id,userId:req.user.id});save();res.json({saved:i<0});});

@@ -14,6 +14,7 @@ A public-first social website with a public home feed, photo/video posts, a sepa
 - Use Node `22.16.0`, build command `npm install`, start command `npm start`.
 - The included `render.yaml` requests a 1 GB persistent disk mounted at `/var/data`; persistent disks require a paid Render service.
 - Set `DATA_DIR=/var/data`. The app stores its JSON database, uploaded files, and session files on this disk.
+- Set `ADMIN_EMAIL` to your administrator email and `ADMIN_PASSWORD` to a new strong password of at least 12 characters in Render → Environment. Do not put the password in source code or GitHub. The app creates/promotes this admin account at startup; log in through the normal Login button, then open Admin.
 - Keep the persistent disk attached when deploying new versions.
 
 ## Upload and media behavior
