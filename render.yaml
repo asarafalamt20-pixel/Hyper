@@ -5,11 +5,6 @@ services:
     plan: starter
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /health
-    disk:
-      name: hyper-instagram-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 22.16.0
@@ -17,7 +12,9 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
-      - key: ADMIN_EMAIL
-        sync: false
-      - key: ADMIN_PASSWORD
-        sync: false
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: hyper-data
+      mountPath: /var/data
+      sizeGB: 1

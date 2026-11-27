@@ -1,41 +1,23 @@
-# Hyper Instagram
+# HYPER Social App
 
-A single-root-folder social photo-sharing web app starter for Render.
+Public-first social site: public home feed, photos/videos, short-video feed, account registration/login with show/hide password, profile editing, likes/comments, follows/search, private chat with photo/video/document attachments, WebRTC audio/video call signaling, and a storage listing.
 
-## Features
-- Register, login and logout with hashed passwords
-- Profile page and profile editing
-- Create text/image posts, feed, likes and comments
-- Follow/unfollow users and search users
-- Text stories with 24-hour expiry
-- Report posts and users; block/unblock accounts
-- Admin dashboard to review reports, remove posts and suspend accounts
-- SQLite persistence and persistent image upload storage (inside the mounted data disk)
-- Basic rate limiting, Helmet headers and session cookies
+## Local run
+1. Install Node.js 22 LTS.
+2. Run `npm install`
+3. Run `npm start`
+4. Open `http://localhost:3000`
 
-## Run locally
-1. Install Node.js 20 or newer.
-2. Copy `.env.example` to `.env` and change the secrets.
-3. Run `npm install`
-4. Run `npm start`
-5. Open `http://localhost:3000`
+## Render deployment
+- Upload the contents of the `Hyper-Instagram` folder to the GitHub repository root.
+- Use Node 22.16.0, build command `npm install`, start command `npm start`.
+- Add a persistent disk mounted at `/var/data` (the included `render.yaml` requests a 1 GB disk on a paid Render plan).
+- Set `DATA_DIR=/var/data` and a strong `SESSION_SECRET`.
+- The JSON database and uploaded files are stored under DATA_DIR. Keep the disk attached when redeploying.
 
-## Runtime compatibility
-
-This project is pinned to Node.js 22 LTS because `better-sqlite3` uses a native prebuilt binary. The `.node-version`, `package.json` engine, and `render.yaml` all select Node 22. If you already created a Render service, set its `NODE_VERSION` environment variable to `22.16.0`, then run **Clear build cache & deploy**.
-
-## Deploy on Render
-1. Upload the contents of this folder to the root of a GitHub repository.
-2. Create a Render Web Service from that repository, or use the included `render.yaml`.
-3. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in Render environment variables.
-4. Keep the persistent disk mounted at `/opt/render/project/src/data`. The database and uploaded profile/post images are stored on this disk so they survive deploys.
-5. Deploy. The app listens on Render's `PORT`.
-
-## Important
-This is a working starter, not a production-certified social network. Before opening it publicly, add email verification, password reset, stronger moderation workflows, backups, privacy/legal pages, abuse monitoring, and load testing. Do not use real user passwords from another service. Admin credentials must be unique and private.
-
-
-## Profile save troubleshooting
-- Profile updates now return a clear error message for invalid image types, files larger than 8 MB, and server failures.
-- Uploaded images are stored inside the persistent `data/uploads` directory.
-- After updating the GitHub repository, use Render **Manual Deploy → Clear build cache & deploy**.
+## Important limits
+- This is an MVP starter, not a fully audited production social network. Add moderation, backups, privacy/legal pages, abuse reporting workflows and stronger operational monitoring before public launch.
+- WebRTC calls use public STUN servers. Some mobile networks/firewalls require a TURN relay server for reliable calls; set up a TURN provider for production-grade calling.
+- Browser calls require HTTPS and microphone/camera permission. Calls work best while both users are online in the site.
+- Storage page lists files uploaded by the signed-in user. The configured 500 MB quota is a display limit in this starter, not hard per-user enforcement.
+- Session storage is in-memory; users may need to log in again after a server restart. Use a persistent session store for production.
