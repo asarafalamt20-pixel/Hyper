@@ -1,23 +1,29 @@
 # HYPER Social App
 
-Public-first social site: public home feed, photos/videos, short-video feed, account registration/login with show/hide password, profile editing, likes/comments, follows/search, private chat with photo/video/document attachments, WebRTC audio/video call signaling, and a storage listing.
+A public-first social website with a public home feed, photo/video posts, a separate Shorts feed, optional login, profile editing, likes/comments, 24-hour photo/video stories, people search, direct messages with image/video/document attachments, a storage listing, and WebRTC audio/video call signaling.
 
-## Local run
+## Run locally
 1. Install Node.js 22 LTS.
-2. Run `npm install`
-3. Run `npm start`
-4. Open `http://localhost:3000`
+2. Run `npm install`.
+3. Copy `.env.example` to `.env` and set a long random `SESSION_SECRET`.
+4. Run `npm start`.
+5. Open `http://localhost:3000`.
 
-## Render deployment
-- Upload the contents of the `Hyper-Instagram` folder to the GitHub repository root.
-- Use Node 22.16.0, build command `npm install`, start command `npm start`.
-- Add a persistent disk mounted at `/var/data` (the included `render.yaml` requests a 1 GB disk on a paid Render plan).
-- Set `DATA_DIR=/var/data` and a strong `SESSION_SECRET`.
-- The JSON database and uploaded files are stored under DATA_DIR. Keep the disk attached when redeploying.
+## Deploy on Render
+- Upload the **contents** of this folder to the GitHub repository root.
+- Use Node `22.16.0`, build command `npm install`, start command `npm start`.
+- The included `render.yaml` requests a 1 GB persistent disk mounted at `/var/data`; persistent disks require a paid Render service.
+- Set `DATA_DIR=/var/data`. The app stores its JSON database, uploaded files, and session files on this disk.
+- Keep the persistent disk attached when deploying new versions.
 
-## Important limits
-- This is an MVP starter, not a fully audited production social network. Add moderation, backups, privacy/legal pages, abuse reporting workflows and stronger operational monitoring before public launch.
-- WebRTC calls use public STUN servers. Some mobile networks/firewalls require a TURN relay server for reliable calls; set up a TURN provider for production-grade calling.
-- Browser calls require HTTPS and microphone/camera permission. Calls work best while both users are online in the site.
-- Storage page lists files uploaded by the signed-in user. The configured 500 MB quota is a display limit in this starter, not hard per-user enforcement.
-- Session storage is in-memory; users may need to log in again after a server restart. Use a persistent session store for production.
+## Upload and media behavior
+- Photo/video posts and story attachments are saved under the persistent upload directory.
+- Select **Short video (Reels)** when creating a short; ordinary video posts appear in Videos, while Shorts appear in the Shorts tab.
+- Upload limit is 100 MB per file. Allowed formats are common JPG/PNG/GIF/WEBP, MP4/WEBM/MOV and common office/PDF/text/ZIP documents.
+- The Storage page lists the signed-in user's uploaded post/story files and sent/received chat attachments. It reports actual recorded file sizes; the 500 MB figure is a display quota, not strict per-account enforcement.
+
+## Important limitations
+- This is an MVP starter, not a fully audited production social network. The JSON database is intended for a small single-instance deployment; use a real database and object storage before scaling.
+- Audio/video calls require HTTPS and microphone/camera permission. Calls use public STUN servers; some mobile networks require a TURN relay service for reliable connectivity. Both users generally need to be online in the site.
+- File uploads are limited by the service's available disk space. Back up the persistent disk.
+- Add stronger moderation, abuse review, privacy/legal pages, backups, and operational monitoring before a public launch.

@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const helmet = require('helmet');
@@ -11,6 +12,8 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+// Render terminates HTTPS at its proxy; trust it so secure session cookies work.
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e6 });
 const PORT = process.env.PORT || 3000;
@@ -19,6 +22,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'hyper.json');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(path.join(DATA_DIR,'sessions'), { recursive: true });
 
 const fresh = () => ({ users: [], posts: [], likes: [], comments: [], follows: [], stories: [], messages: [], reports: [], blocks: [] });
 let db;
@@ -30,7 +34,7 @@ const publicUser = u => ({ id:u.id, name:u.name, email:u.email, bio:u.bio || '',
 const getUser = req => db.users.find(u => u.id === req.session.userId && !u.suspended);
 function auth(req,res,next) { const u=getUser(req); if(!u) return res.status(401).json({error:'Please log in first'}); req.user=u; next(); }
 function blocked(a,b) { return db.blocks.some(x => (x.from===a&&x.to===b)||(x.from===b&&x.to===a)); }
-const sessionMiddleware = session({ secret:process.env.SESSION_SECRET || 'change-this-hyper-session-secret-before-production', resave:false, saveUninitialized:false, cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:7*86400000} });
+const sessionMiddleware = session({ store:new FileStore({path:path.join(DATA_DIR,'sessions'),reapInterval:3600,ttl:7*86400}), secret:process.env.SESSION_SECRET || 'change-this-hyper-session-secret-before-production', resave:false, saveUninitialized:false, proxy:true,cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:7*86400000} });
 app.use(helmet({ contentSecurityPolicy:false }));
 app.use(express.json({limit:'2mb'}));
 app.use(sessionMiddleware);
@@ -42,10 +46,11 @@ const ioSession = require('express-socket.io-session');
 io.use(ioSession(sessionMiddleware, { autoSave:true }));
 
 const storage = multer.diskStorage({ destination:(req,file,cb)=>cb(null,UPLOAD_DIR), filename:(req,file,cb)=>cb(null,Date.now()+'-'+crypto.randomBytes(5).toString('hex')+path.extname(file.originalname).toLowerCase()) });
-const upload = multer({ storage, limits:{fileSize:50*1024*1024}, fileFilter:(req,file,cb)=>{
+const upload = multer({ storage, limits:{fileSize:100*1024*1024}, fileFilter:(req,file,cb)=>{
   const ext=path.extname(file.originalname).toLowerCase();
-  const allowed=['.jpg','.jpeg','.png','.gif','.webp','.mp4','.webm','.mov','.pdf','.doc','.docx','.xls','.xlsx','.txt','.zip'];
-  cb(allowed.includes(ext) ? null : new Error('File type not allowed'), allowed.includes(ext));
+  const allowed=['.jpg','.jpeg','.png','.gif','.webp','.mp4','.webm','.mov','.pdf','.doc','.docx','.xls','.xlsx','.ppt','.pptx','.csv','.txt','.zip'];
+  const mimeOk=/^(image\/(jpeg|png|gif|webp)|video\/(mp4|webm|quicktime)|application\/(pdf|msword|vnd\.|zip)|text\/plain|text\/csv)/i.test(file.mimetype);
+  cb(allowed.includes(ext) && mimeOk ? null : new Error('Unsupported file type. Choose an image, video or document.'), allowed.includes(ext) && mimeOk);
 }});
 
 app.get('/health',(req,res)=>res.json({ok:true,app:'HYPER'}));
@@ -68,7 +73,8 @@ app.get('/api/feed',(req,res)=>{
  res.json({posts:posts.map(p=>({...p,user:publicUser(db.users.find(u=>u.id===p.userId)),likes:db.likes.filter(x=>x.postId===p.id).length,comments:db.comments.filter(x=>x.postId===p.id).length,liked:!!me&&db.likes.some(x=>x.postId===p.id&&x.userId===me.id)}))});
 });
 app.post('/api/posts',auth,upload.single('file'),(req,res)=>{
- const caption=clean(req.body.caption).slice(0,2000), file=req.file, type=file?(file.mimetype.startsWith('video/')?'video':'image'):'text';
+ const caption=clean(req.body.caption).slice(0,2000), file=req.file; let type=file?(file.mimetype.startsWith('video/')?(req.body.kind==='short'?'short':'video'):'image'):'text';
+ if(req.body.kind==='short' && (!file || !file.mimetype.startsWith('video/'))) return res.status(400).json({error:'A video file is required for a Short'});
  if(!caption&&!file) return res.status(400).json({error:'Write something or choose a photo/video'});
  const p={id:id(),userId:req.user.id,caption,type,file:file?'/uploads/'+file.filename:'',fileName:file?.originalname||'',mime:file?.mimetype||'',size:file?.size||0,createdAt:new Date().toISOString()}; db.posts.push(p); save(); res.json({post:p});
 });
@@ -78,13 +84,13 @@ app.post('/api/posts/:id/comments',auth,(req,res)=>{const body=clean(req.body.bo
 app.get('/api/users/search',auth,(req,res)=>{const q=clean(req.query.q).toLowerCase();res.json({users:db.users.filter(u=>!u.suspended&&u.id!==req.user.id&&!blocked(u.id,req.user.id)&&u.name.toLowerCase().includes(q)).slice(0,40).map(publicUser)});});
 app.get('/api/users/:id',(req,res)=>{const u=db.users.find(x=>x.id===req.params.id&&!x.suspended);if(!u)return res.status(404).json({error:'User not found'});const posts=db.posts.filter(p=>p.userId===u.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));res.json({user:publicUser(u),posts,followers:db.follows.filter(x=>x.to===u.id).length,following:db.follows.filter(x=>x.from===u.id).length});});
 app.post('/api/users/:id/follow',auth,(req,res)=>{const target=req.params.id;if(target===req.user.id||!db.users.some(u=>u.id===target)||blocked(target,req.user.id))return res.status(400).json({error:'Cannot follow this user'});const i=db.follows.findIndex(x=>x.from===req.user.id&&x.to===target);if(i>=0)db.follows.splice(i,1);else db.follows.push({from:req.user.id,to:target});save();res.json({following:i<0});});
-app.put('/api/profile',auth,upload.single('avatar'),(req,res)=>{const name=clean(req.body.name).slice(0,40);if(name.length<2)return res.status(400).json({error:'Name must be at least 2 characters'});req.user.name=name;req.user.bio=clean(req.body.bio).slice(0,240);if(req.file)req.user.avatar='/uploads/'+req.file.filename;save();res.json({ok:true,user:publicUser(req.user)});});
+app.put('/api/profile',auth,upload.single('avatar'),(req,res)=>{const name=clean(req.body.name).slice(0,40);if(name.length<2)return res.status(400).json({error:'Name must be at least 2 characters'});if(req.file&&!req.file.mimetype.startsWith('image/'))return res.status(400).json({error:'Profile photo must be an image'});req.user.name=name;req.user.bio=clean(req.body.bio).slice(0,240);if(req.file)req.user.avatar='/uploads/'+req.file.filename;save();res.json({ok:true,user:publicUser(req.user)});});
 app.get('/api/stories',(req,res)=>{ const now=Date.now(); db.stories=db.stories.filter(s=>new Date(s.expiresAt).getTime()>now); const stories=db.stories.map(s=>{ const u=db.users.find(x=>x.id===s.userId)||{id:'',name:'Unknown',email:''}; return {...s,user:publicUser(u)}; }); res.json({stories}); });
-app.post('/api/stories',auth,(req,res)=>{const body=clean(req.body.body).slice(0,180);if(!body)return res.status(400).json({error:'Story is empty'});db.stories.push({id:id(),userId:req.user.id,body,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()});save();res.json({ok:true});});
+app.post('/api/stories',auth,upload.single('file'),(req,res)=>{const body=clean(req.body.body).slice(0,180),file=req.file;if(!body&&!file)return res.status(400).json({error:'Write a story or choose a photo/video'});if(file&&!/^(image|video)\//.test(file.mimetype))return res.status(400).json({error:'Story attachment must be a photo or video'});const story={id:id(),userId:req.user.id,body,file:file?'/uploads/'+file.filename:'',fileName:file?.originalname||'',mime:file?.mimetype||'',size:file?.size||0,createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+86400000).toISOString()};db.stories.push(story);save();res.json({ok:true,story});});
 app.get('/api/contacts',auth,(req,res)=>{const ids=[...new Set([...db.follows.filter(x=>x.from===req.user.id).map(x=>x.to),...db.follows.filter(x=>x.to===req.user.id).map(x=>x.from),...db.messages.filter(m=>m.from===req.user.id||m.to===req.user.id).map(m=>m.from===req.user.id?m.to:m.from)])].filter(x=>x!==req.user.id&&!blocked(x,req.user.id));res.json({users:ids.map(x=>db.users.find(u=>u.id===x)).filter(Boolean).map(publicUser)});});
 app.get('/api/messages/:id',auth,(req,res)=>{if(blocked(req.user.id,req.params.id))return res.status(403).json({error:'Chat unavailable'});res.json({messages:db.messages.filter(m=>(m.from===req.user.id&&m.to===req.params.id)||(m.from===req.params.id&&m.to===req.user.id)).slice(-200)});});
 app.post('/api/messages/:id',auth,upload.single('file'),(req,res)=>{const to=req.params.id;if(!db.users.some(u=>u.id===to)||blocked(req.user.id,to))return res.status(404).json({error:'User not found'});const body=clean(req.body.body).slice(0,3000),f=req.file;if(!body&&!f)return res.status(400).json({error:'Message or attachment required'});const m={id:id(),from:req.user.id,to,body,type:f?(f.mimetype.startsWith('image/')?'image':f.mimetype.startsWith('video/')?'video':'file'):'text',url:f?'/uploads/'+f.filename:'',fileName:f?.originalname||'',mime:f?.mimetype||'',size:f?.size||0,createdAt:new Date().toISOString()};db.messages.push(m);save();io.to('user:'+to).emit('message',m);res.json({message:m});});
-app.get('/api/storage',auth,(req,res)=>{const own=[...db.posts.filter(p=>p.userId===req.user.id&&p.file),...db.messages.filter(m=>m.from===req.user.id&&m.url)];res.json({files:own.map(f=>({name:f.fileName||f.url.split('/').pop(),url:f.file||f.url,type:f.mime||f.type,size:f.size||0,createdAt:f.createdAt})),used:own.reduce((n,f)=>n+(f.size||0),0),limit:500*1024*1024});});
+app.get('/api/storage',auth,(req,res)=>{const own=[...db.posts.filter(p=>p.userId===req.user.id&&p.file),...db.stories.filter(x=>x.userId===req.user.id&&x.file),...db.messages.filter(m=>(m.from===req.user.id||m.to===req.user.id)&&m.url),...db.users.filter(u=>u.id===req.user.id&&u.avatar).map(u=>({file:u.avatar,fileName:'Profile photo',mime:'image',size:0,createdAt:u.createdAt}))];const unique=[...new Map(own.map(f=>[f.file||f.url,f])).values()];res.json({files:unique.map(f=>({name:f.fileName||f.url?.split('/').pop()||f.file?.split('/').pop()||'File',url:f.file||f.url,type:f.mime||f.type,size:f.size||0,createdAt:f.createdAt})),used:unique.reduce((n,f)=>n+(f.size||0),0),limit:500*1024*1024});});
 app.post('/api/report',auth,(req,res)=>{const reason=clean(req.body.reason).slice(0,300);if(!reason)return res.status(400).json({error:'Reason required'});db.reports.push({id:id(),userId:req.user.id,reason,createdAt:new Date().toISOString()});save();res.json({ok:true});});
 
 io.on('connection',socket=>{
