@@ -28,3 +28,9 @@ A public-first social website with a public home feed, photo/video posts, a sepa
 - Audio/video calls require HTTPS and microphone/camera permission. Calls use public STUN servers; some mobile networks require a TURN relay service for reliable connectivity. Both users generally need to be online in the site.
 - File uploads are limited by the service's available disk space. Back up the persistent disk.
 - Add stronger moderation, abuse review, privacy/legal pages, backups, and operational monitoring before a public launch.
+
+
+## Admin setup and data persistence
+In Render → Environment, set `ADMIN_EMAIL` to your existing account email and `ADMIN_PASSWORD` to a NEW strong password of at least 12 characters. The admin role is assigned at server startup; redeploy after saving the variables, then sign out and sign back in. Never put the password in source code or share it in chat. The Render blueprint mounts a persistent disk at `/var/data`, so posts, reels, uploaded media and sessions survive deploys/restarts on a paid Render disk. Sessions last up to 30 days unless you log out or clear browser cookies.
+
+This update adds owner/admin post deletion, post/reel sharing into chat, optional audio tracks on stories, muted autoplay when videos enter the viewport, and like-button updates without reloading the feed video. Autoplay is muted because browsers block automatic sound.
