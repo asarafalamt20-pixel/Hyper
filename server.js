@@ -18,11 +18,25 @@ const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e6 });
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
-const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
-const DB_FILE = path.join(DATA_DIR, 'hyper.json');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-fs.mkdirSync(path.join(DATA_DIR,'sessions'), { recursive: true });
+// Use the configured directory when writable. On Render Free there is no
+// persistent disk; if /var/data is unavailable, fall back to writable /tmp
+// so the service can still boot (data in /tmp is ephemeral across restarts).
+let DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
+let UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+let DB_FILE = path.join(DATA_DIR, 'hyper.json');
+try {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(path.join(DATA_DIR, 'sessions'), { recursive: true });
+  fs.accessSync(DATA_DIR, fs.constants.W_OK);
+} catch (err) {
+  console.warn('Configured DATA_DIR is not writable:', DATA_DIR, err.message);
+  DATA_DIR = process.env.FREE_DATA_DIR || '/tmp/hyper-data';
+  UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+  DB_FILE = path.join(DATA_DIR, 'hyper.json');
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(path.join(DATA_DIR, 'sessions'), { recursive: true });
+  console.warn('Using temporary storage at', DATA_DIR, '- files and database may be lost when the service restarts or redeploys.');
+}
 
 const fresh = () => ({ users: [], posts: [], likes: [], comments: [], follows: [], stories: [], messages: [], reports: [], blocks: [], saves: [], storyLikes: [], storyComments: [], storySaves: [] });
 let db;

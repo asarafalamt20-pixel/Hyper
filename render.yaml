@@ -2,7 +2,7 @@ services:
   - type: web
     name: hyper-instagram
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -13,12 +13,8 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: DATA_DIR
-        value: /var/data
+        value: /tmp/hyper-data
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-    disk:
-      name: hyper-data
-      mountPath: /var/data
-      sizeGB: 1
