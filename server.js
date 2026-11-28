@@ -45,12 +45,12 @@ for (const k of Object.keys(fresh())) if (!Array.isArray(db[k])) db[k] = [];
 // Bootstrap the administrator from Render environment variables; never store a plaintext password in source code.
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
-if (ADMIN_EMAIL && ADMIN_PASSWORD.length >= 12) {
+if (ADMIN_EMAIL && ADMIN_PASSWORD.length >= 6) {
   let admin = db.users.find(u => u.email === ADMIN_EMAIL);
   if (!admin) { admin = { id: crypto.randomBytes(12).toString('hex'), name: 'HYPER Admin', email: ADMIN_EMAIL, bio: 'Administrator', avatar: '', createdAt: new Date().toISOString() }; db.users.push(admin); }
   admin.role = 'admin'; admin.password = bcrypt.hashSync(ADMIN_PASSWORD, 12);
   fs.writeFileSync(DB_FILE, JSON.stringify(db));
-} else if (ADMIN_EMAIL || ADMIN_PASSWORD) { console.warn('Admin bootstrap skipped: set ADMIN_EMAIL and ADMIN_PASSWORD (at least 12 characters).'); }
+} else if (ADMIN_EMAIL || ADMIN_PASSWORD) { console.warn('Admin bootstrap skipped: set ADMIN_EMAIL and ADMIN_PASSWORD (at least 6 characters).'); }
 function save() { const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
 const id = () => crypto.randomBytes(12).toString('hex');
 const clean = s => String(s || '').trim();
@@ -110,7 +110,7 @@ app.post('/api/posts',auth,upload.single('file'),(req,res)=>{
  const caption=clean(req.body.caption).slice(0,2000), file=req.file; const ext=file?path.extname(file.originalname).toLowerCase():''; const isVideo=!!file&&(file.mimetype.startsWith('video/')||['.mp4','.m4v','.webm','.mov','.3gp','.mkv'].includes(ext)); let type=file?(isVideo?(req.body.kind==='short'?'short':'video'):'image'):'text';
  if(req.body.kind==='short' && (!file || !isVideo)) return res.status(400).json({error:'A video file is required for a Short'});
  if(!caption&&!file) return res.status(400).json({error:'Write something or choose a photo/video'});
- const p={id:id(),userId:req.user.id,caption,type,file:file?'/uploads/'+file.filename:'',fileName:file?.originalname||'',mime:file?.mimetype||'',size:file?.size||0,createdAt:new Date().toISOString()}; db.posts.push(p); save(); res.json({post:p});
+ let audioUrl=''; try { const raw=String(req.body.audioUrl||'').trim(); if(raw){ const u=new URL(raw); if(!['http:','https:'].includes(u.protocol)) throw new Error('Invalid audio URL'); audioUrl=u.toString(); } } catch { return res.status(400).json({error:'Song link must be a valid http/https audio URL'}); } const p={id:id(),userId:req.user.id,caption,type,file:file?'/uploads/'+file.filename:'',fileName:file?.originalname||'',mime:file?.mimetype||'',size:file?.size||0,audioUrl,createdAt:new Date().toISOString()}; db.posts.push(p); save(); res.json({post:p});
 });
 app.post('/api/posts/:id/like',auth,(req,res)=>{const p=db.posts.find(x=>x.id===req.params.id);if(!p)return res.status(404).json({error:'Post not found'});let i=db.likes.findIndex(x=>x.postId===p.id&&x.userId===req.user.id);if(i>=0)db.likes.splice(i,1);else db.likes.push({postId:p.id,userId:req.user.id});save();res.json({liked:i<0});});
 app.post('/api/posts/:id/save',auth,(req,res)=>{const p=db.posts.find(x=>x.id===req.params.id);if(!p)return res.status(404).json({error:'Post not found'});const i=db.saves.findIndex(x=>x.postId===p.id&&x.userId===req.user.id);if(i>=0)db.saves.splice(i,1);else db.saves.push({postId:p.id,userId:req.user.id});save();res.json({saved:i<0});});

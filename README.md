@@ -14,7 +14,7 @@ A public-first social website with a public home feed, photo/video posts, a sepa
 - Use Node `22.16.0`, build command `npm install`, start command `npm start`.
 - This package is configured for Render Free and does not request a paid Persistent Disk. It uses writable temporary storage at `/tmp/hyper-data` so the server can start without the `/var/data` permission error.
 - The app stores its JSON database, uploaded files, and session files in `/tmp/hyper-data` on the free instance.
-- Set `ADMIN_EMAIL` to your administrator email and `ADMIN_PASSWORD` to a new strong password of at least 12 characters in Render → Environment. Do not put the password in source code or GitHub. The app creates/promotes this admin account at startup; log in through the normal Login button, then open Admin.
+- Set `ADMIN_EMAIL` to your administrator email and `ADMIN_PASSWORD` to a new password of at least 6 characters (a longer, unique password is safer) in Render → Environment. Do not put the password in source code or GitHub. The app creates/promotes this admin account at startup; log in through the normal Login button, then open Admin.
 - Keep the persistent disk attached when deploying new versions.
 
 ## Upload and media behavior
