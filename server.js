@@ -40,7 +40,7 @@ try {
 
 const fresh = () => ({ users: [], posts: [], likes: [], comments: [], follows: [], stories: [], messages: [], reports: [], blocks: [], saves: [], storyLikes: [], storyComments: [], storySaves: [], hiddenPosts: [], hiddenMessages: [] });
 let db;
-try { db = fs.existsSync(DB_FILE) ? { ...fresh(), ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) } : fresh(); } catch { db = fresh(); }
+try { db = fs.existsSync(DB_FILE) ? { ...fresh(), ...JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) } : fresh(); } catch (err) { console.error('Database file could not be read; refusing to start with an empty database to protect existing users:', err.message); process.exit(1); }
 for (const k of Object.keys(fresh())) if (!Array.isArray(db[k])) db[k] = [];
 // Bootstrap the administrator from Render environment variables; never store a plaintext password in source code.
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
@@ -51,7 +51,7 @@ if (ADMIN_EMAIL && ADMIN_PASSWORD.length >= 6) {
   admin.role = 'admin'; admin.password = bcrypt.hashSync(ADMIN_PASSWORD, 12);
   fs.writeFileSync(DB_FILE, JSON.stringify(db));
 } else if (ADMIN_EMAIL || ADMIN_PASSWORD) { console.warn('Admin bootstrap skipped: set ADMIN_EMAIL and ADMIN_PASSWORD (at least 6 characters).'); }
-function save() { const tmp = DB_FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
+function save() { const tmp = DB_FILE + '.tmp'; if (fs.existsSync(DB_FILE)) { try { fs.copyFileSync(DB_FILE, DB_FILE + '.bak'); } catch (e) { console.error('Database backup failed:', e.message); } } fs.writeFileSync(tmp, JSON.stringify(db)); fs.renameSync(tmp, DB_FILE); }
 const id = () => crypto.randomBytes(12).toString('hex');
 const clean = s => String(s || '').trim();
 const publicUser = u => ({ id:u.id, name:u.name, email:u.email, role:u.role || 'user', bio:u.bio || '', avatar:u.avatar || '', createdAt:u.createdAt });
