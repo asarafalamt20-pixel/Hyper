@@ -1,6 +1,21 @@
-# HYPER Social App
+# HYPER – Social App Bundle
 
-A public-first social website with a public home feed, photo/video posts, a separate Shorts feed, optional login, profile editing, likes/comments, 24-hour photo/video stories, people search, direct messages with image/video/document attachments, a storage listing, and WebRTC audio/video call signaling.
+This ZIP bundles the current HYPER starter app and the features already present in this codebase:
+- Home feed with photo/video posts, likes, comments, saves and sharing
+- 24-hour grouped stories with story media controls and home-media pause/resume logic
+- Shorts/Reels feed
+- Profile page with edit name, bio, profile photo and cover photo
+- Follow/follower lists and profile sharing
+- Direct chat with media/document attachments and WebRTC call signaling
+- Promote requests, admin featured placement, target reach, campaign duration and post ID selection
+- Admin dashboard, moderation controls, storage listing/packs, and payment settings UI
+- Admin can edit/remove PhonePe UPI ID and upload/replace/delete a PhonePe UPI QR image
+
+## Payment limitation
+PhonePe's payment gateway/API is **not connected** in this package. The current promotion request flow remains a demo/manual-review flow; it does not verify or collect a real payment. Do not treat screenshots as proof of payment. Any real payment setup must be created and operated by a parent/guardian through an authorised payment provider. Never store UPI PINs, OTPs, passwords or card PINs in this app.
+
+## Not included / not claimed
+This is not a literal merger of every app in the world. It does not include YouTube's platform, WhatsApp/Telegram network access, third-party account logins, full public livestream infrastructure, or their proprietary APIs. It is an independent HYPER app with selected social features. External integrations require each provider's official API approval and credentials.
 
 ## Run locally
 1. Install Node.js 22 LTS.
@@ -9,50 +24,11 @@ A public-first social website with a public home feed, photo/video posts, a sepa
 4. Run `npm start`.
 5. Open `http://localhost:3000`.
 
-## Deploy on Render
-- Upload the **contents** of this folder to the GitHub repository root.
-- Use Node `22.16.0`, build command `npm install`, start command `npm start`.
-- This package is configured for Render Free and does not request a paid Persistent Disk. It uses writable temporary storage at `/tmp/hyper-data` so the server can start without the `/var/data` permission error.
-- The app stores its JSON database, uploaded files, and session files in `/tmp/hyper-data` on the free instance.
-- Set `ADMIN_EMAIL` to your administrator email and `ADMIN_PASSWORD` to a new password of at least 6 characters (a longer, unique password is safer) in Render → Environment. Do not put the password in source code or GitHub. The app creates/promotes this admin account at startup; log in through the normal Login button, then open Admin.
-- Keep the persistent disk attached when deploying new versions.
+## Render deployment
+- Upload the contents of this folder to the repository root.
+- Node 22; build command `npm install`; start command `npm start`.
+- Set `ADMIN_EMAIL`, `ADMIN_PASSWORD` (use a strong unique password) and `SESSION_SECRET` in Render Environment. Never share credentials in chat.
+- Render Free uses temporary `/tmp/hyper-data`; uploaded media and JSON data may be lost after restarts/redeploys. Back up data before replacing an existing deployment.
 
-## Upload and media behavior
-- Photo/video posts and story attachments are saved under the configured upload directory. On Render Free this is temporary storage.
-- Select **Short video (Reels)** when creating a short; ordinary video posts appear in Videos, while Shorts appear in the Shorts tab.
-- Upload limit is 100 MB per file. Allowed formats are common JPG/PNG/GIF/WEBP, MP4/WEBM/MOV and common office/PDF/text/ZIP documents.
-- The Storage page lists the signed-in user's uploaded post/story files and sent/received chat attachments. It reports actual recorded file sizes; the 500 MB figure is a display quota, not strict per-account enforcement.
-
-## Free plan storage warning
-Render Free has no persistent disk. This build falls back to `/tmp/hyper-data` and should boot without buying a disk, but uploaded files and the JSON database are temporary and are not guaranteed to survive restarts or redeploys. For durable cloud persistence, connect an external database and object-storage provider; that requires creating provider credentials and configuring them as environment variables.
-
-## Important limitations
-- This is an MVP starter, not a fully audited production social network. The JSON database is intended for a small single-instance deployment; use a real database and object storage before scaling.
-- Audio/video calls require HTTPS and microphone/camera permission. Calls use public STUN servers; some mobile networks require a TURN relay service for reliable connectivity. Both users generally need to be online in the site.
-- File uploads are limited by the service's available disk space. Back up the persistent disk.
-- Add stronger moderation, abuse review, privacy/legal pages, backups, and operational monitoring before a public launch.
-
-
-## Admin setup and data persistence
-In Render → Environment, set `ADMIN_EMAIL` to your existing account email and `ADMIN_PASSWORD` to a NEW strong password of at least 12 characters. The admin role is assigned at server startup; redeploy after saving the variables, then sign out and sign back in. Never put the password in source code or share it in chat. The Render Free blueprint uses `/tmp/hyper-data` to avoid paid disk requirements and permission errors. Posts and media remain available across logout/login while the instance storage remains intact, but Render Free may erase temporary files during restarts, redeploys, or instance replacement. This package does not yet provide durable external cloud database/object storage. Sessions last up to 30 days unless you log out or clear browser cookies.
-
-This update adds owner/admin post deletion, post/reel sharing into chat, optional audio tracks on stories, muted autoplay when videos enter the viewport, and like-button updates without reloading the feed video. Autoplay is muted because browsers block automatic sound.
-
-## Storage packs (added)
-- Every user starts with 500 MB free quota. Approved purchases add permanent storage on top of that quota.
-- Default packs: 50 MB ₹5, 100 MB ₹10, 250 MB ₹20, 500 MB ₹39, 1 GB ₹69, 2 GB ₹129, 5 GB ₹299.
-- Users submit a UPI/bank payment reference from the Storage page. Admin must verify the payment in the bank/UPI account before approving; approval adds the pack bytes to that user's account.
-- Admin can change pack labels, sizes, prices, and active status from Admin Dashboard → Storage Pack Settings.
-- Upload routes enforce each user's quota. If the limit is reached, the upload is rejected with a message to buy storage or remove old uploads.
-
-## Media storage note
-
-This build stores uploaded media on the Node server's local `DATA_DIR/uploads` folder. Cloudflare R2 integration and R2 environment variables have been removed. A Render Free filesystem is temporary and can be cleared on restart/redeploy; use a persistent disk or a separately hosted storage server for durable media. A phone's internal storage cannot be used by this hosted website merely by plugging in a biometric OTG adapter: a separate Android companion server app plus a secure, reachable connection would be required. This ZIP does not include that Android APK or claim to provide unlimited cloud storage.
-
-## Updates in this package
-- Story groups now try to start video/audio immediately after the user opens a story group, stop the previous story's media, and advance automatically when media ends or its fallback display timer completes. Browser autoplay policies can still require a tap.
-- Profile avatars are clickable and open the corresponding user profile; profile pages show follower/following counts and separate Posts and Reels tabs.
-- Admin can feature a post or Reel at the top of Home for 1–365 days, set ordering priority, and stop a campaign. Featured items are labelled Sponsored. Reach targets are goals, not guaranteed or artificially purchased views.
-- Multiple-account email switching from the prior package remains available on the same device.
-
-Before deployment, back up the existing database and uploads. Render Free storage is temporary.
+## Testing
+The ZIP archive integrity and `node --check server.js` are checked. A live Render deployment and real-device end-to-end test have not been performed.
