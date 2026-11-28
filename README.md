@@ -37,3 +37,13 @@ Render Free has no persistent disk. This build falls back to `/tmp/hyper-data` a
 In Render → Environment, set `ADMIN_EMAIL` to your existing account email and `ADMIN_PASSWORD` to a NEW strong password of at least 12 characters. The admin role is assigned at server startup; redeploy after saving the variables, then sign out and sign back in. Never put the password in source code or share it in chat. The Render Free blueprint uses `/tmp/hyper-data` to avoid paid disk requirements and permission errors. Posts and media remain available across logout/login while the instance storage remains intact, but Render Free may erase temporary files during restarts, redeploys, or instance replacement. This package does not yet provide durable external cloud database/object storage. Sessions last up to 30 days unless you log out or clear browser cookies.
 
 This update adds owner/admin post deletion, post/reel sharing into chat, optional audio tracks on stories, muted autoplay when videos enter the viewport, and like-button updates without reloading the feed video. Autoplay is muted because browsers block automatic sound.
+
+## Storage packs (added)
+- Every user starts with 500 MB free quota. Approved purchases add permanent storage on top of that quota.
+- Default packs: 50 MB ₹5, 100 MB ₹10, 250 MB ₹20, 500 MB ₹39, 1 GB ₹69, 2 GB ₹129, 5 GB ₹299.
+- Users submit a UPI/bank payment reference from the Storage page. Admin must verify the payment in the bank/UPI account before approving; approval adds the pack bytes to that user's account.
+- Admin can change pack labels, sizes, prices, and active status from Admin Dashboard → Storage Pack Settings.
+- Upload routes enforce each user's quota. If the limit is reached, the upload is rejected with a message to buy storage or remove old uploads.
+
+IMPORTANT STORAGE DEPLOYMENT NOTE:
+This package adds quota accounting and purchase approval, but its existing media engine still writes uploads to the app's local DATA_DIR. It is NOT yet connected to Cloudflare R2. Render Free local storage is ephemeral and must not be treated as durable storage. To use R2, configure an R2 bucket and credentials and integrate the R2 object client before relying on paid storage packs. Do not promise permanent media retention until R2 (or another persistent object store) is connected and tested. Back up the existing database before deploying this update.
