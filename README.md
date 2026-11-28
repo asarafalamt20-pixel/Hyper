@@ -49,7 +49,7 @@ This build stores uploaded media on the Node server's local `DATA_DIR/uploads` f
 ## HYPER social layout
 - Story groups now try to start video/audio immediately after the user opens a story group, stop the previous story's media, and advance automatically when media ends or its fallback display timer completes. Browser autoplay policies can still require a tap.
 - Profile avatars are clickable and open the corresponding user profile; profile pages show follower/following counts and separate Posts and Reels tabs.
-- Admin can feature a post or Reel at the top of Home for 1–365 days, set ordering priority, and stop a campaign. Featured items are labelled Sponsored. Reach targets are goals, not guaranteed or artificially purchased views.
+- Admin can pin or unpin any post/video at the top of Home. Admin can add a public video/link directly to either Home or Reels. Pinned items appear before regular feed items.
 - Multiple-account email switching from the prior package remains available on the same device.
 
 Before deployment, back up the existing database and uploads. Render Free storage is temporary.
@@ -76,4 +76,11 @@ Open **Admin** while signed in with the configured administrator account. In **A
 - **Website / Social link** — creates a clickable card for any public website or social post URL.
 - **Image link** / **Audio link** — displays direct image or audio files.
 
-The item is added to the regular Home feed. A website may block iframe embedding; in that case use **Website / Social link** so people can open it at its source. HYPER cannot bypass a provider's restrictions or automatically import videos from every website. The Home feed has no separate Videos tab. Only Admin can create Sponsored placements; there is no user Promote/payment screen.
+The item is added to the regular Home feed. A website may block iframe embedding; in that case use **Website / Social link** so people can open it at its source. HYPER cannot bypass a provider's restrictions or automatically import videos from every website. The Home feed has no separate Videos tab. Admin can pin any existing post/video to the top of Home; there is no user Promote/payment screen.
+
+
+## Admin pinning and online Reels
+- Admin Dashboard → Manage posts lets the admin pin/unpin a post or video at the top of Home.
+- Admin Dashboard → Add online video lets the admin choose Home or Reels.
+- External providers may block embedding; in that case HYPER displays a link to open the original source.
+- The source ZIP contains application code only; it does not include or erase a deployed server database or uploaded user files. Back up the deployed data before changing deployment settings.
