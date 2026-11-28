@@ -50,7 +50,7 @@ This build stores uploaded media on the Node server's local `DATA_DIR/uploads` f
 - Story groups now try to start video/audio immediately after the user opens a story group, stop the previous story's media, and advance automatically when media ends or its fallback display timer completes. Browser autoplay policies can still require a tap.
 - Profile avatars are clickable and open the corresponding user profile; profile pages show follower/following counts and separate Posts and Reels tabs.
 - Admin can pin or unpin any post/video at the top of Home. Admin can add a public video/link directly to either Home or Reels. Pinned items appear before regular feed items.
-- Multiple-account email switching from the prior package remains available on the same device.
+- The Accounts menu remembers account email addresses on this device for quick selection. For security, each account switch still requires that account password; passwords are not stored in browser storage.
 
 Before deployment, back up the existing database and uploads. Render Free storage is temporary.
 
