@@ -57,3 +57,10 @@ Before deployment, back up the existing database and uploads. Render Free storag
 
 ## Payment safety
 This ZIP is a demonstration social app. Promotion requests are test-only; it does not accept UPI, PhonePe, QR, bank-account details, or process real payments/payouts. A real payment integration must be arranged by an adult account holder with an authorized payment provider and appropriate legal/compliance review.
+
+## Online videos in Home
+- Admin can add public YouTube, Vimeo, and Dailymotion video links from Admin Dashboard → Add online video to Home.
+- Supported links are embedded in the Home feed. Other websites may block embedding; those links open on their source website.
+- The app does not scrape or automatically import every video from the internet. An Admin must add the public video links.
+- Home → Videos filter includes uploaded videos and Admin-added online videos.
+- User-facing Promote navigation/payment request flow is removed. Admin-sponsored placement controls remain in Admin Dashboard.
